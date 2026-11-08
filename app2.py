@@ -1,16 +1,63 @@
 import os
 import streamlit as st
+
+# --- INSTANT CLOUD SQLITE INTERCEPTOR ---
+# Automatically routes all mysql.connector calls to SQLite when running on Streamlit Cloud
+IS_CLOUD = os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE") or "mount" in os.getcwd()
+
+if IS_CLOUD:
+    import sqlite3
+    import sys
+
+    class DummyCursor:
+        def __init__(self, cursor):
+            self.cursor = cursor
+        def execute(self, query, params=None, multi=False):
+            query = query.replace("%s", "?")
+            return self.cursor.execute(query, params) if params else self.cursor.execute(query)
+        def executemany(self, query, seq_params):
+            return self.cursor.executemany(query.replace("%s", "?"), seq_params)
+        def fetchone(self): return self.cursor.fetchone()
+        def fetchall(self): return self.cursor.fetchall()
+        def fetchmany(self, size=None): return self.cursor.fetchmany(size)
+        @property
+        def lastrowid(self): return self.cursor.lastrowid
+        @property
+        def rowcount(self): return self.cursor.rowcount
+        def close(self): return self.cursor.close()
+        def __iter__(self): return iter(self.cursor)
+
+    class DummyConn:
+        def __init__(self, conn): self.conn = conn
+        def cursor(self, *args, **kwargs): return DummyCursor(self.conn.cursor(*args, **kwargs))
+        def commit(self): return self.conn.commit()
+        def rollback(self): return self.conn.rollback()
+        def close(self): return self.conn.close()
+        def __enter__(self): return self
+        def __exit__(self, et, ev, tb): self.close()
+
+    class MockMysqlConnector:
+        Error = sqlite3.Error
+        IntegrityError = sqlite3.IntegrityError
+        DatabaseError = sqlite3.DatabaseError
+        ProgrammingError = sqlite3.ProgrammingError
+        def connect(self, **kwargs):
+            db_path = os.path.join(os.getcwd(), "smart_dairy.db")
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            return DummyConn(conn)
+
+    # Force python to use our mock connector globally
+    sys.modules['mysql.connector'] = MockMysqlConnector()
+
 import mysql.connector
 from sqlalchemy import create_engine
 
-# --- ENVIRONMENT-FIRST DATABASE SETUP ---
-# Uses SQLite on Streamlit Cloud, and your local MySQL (phpMyAdmin) on your laptop
-if os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE") or "mount" in os.getcwd():
-    # Streamlit Cloud: Use SQLite automatically
+# Universal Engine Setup
+if IS_CLOUD:
     DB_URL = "sqlite:///smart_dairy.db"
     engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 else:
-    # Local Computer: Use your local MySQL / phpMyAdmin database
     DB_URL = "mysql+mysqlconnector://root:YOUR_PASSWORD@localhost:3306/smart_dairy"
     engine = create_engine(DB_URL)
 # ==============================================================================
