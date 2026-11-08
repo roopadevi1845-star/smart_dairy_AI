@@ -26,7 +26,12 @@ class CursorProxy:
 
 class ConnectionProxy:
     def __init__(self, conn): self.conn = conn
-    def cursor(self, *args, **kwargs): return CursorProxy(self.conn.cursor(*args, **kwargs))
+    def cursor(self, *args, **kwargs):
+        # Ignore MySQL-specific cursor arguments like dictionary=True
+        kwargs.pop('dictionary', None)
+        kwargs.pop('buffered', None)
+        kwargs.pop('named_tuple', None)
+        return CursorProxy(self.conn.cursor(*args, **kwargs))
     def commit(self): return self.conn.commit()
     def rollback(self): return self.conn.rollback()
     def close(self): return self.conn.close()
