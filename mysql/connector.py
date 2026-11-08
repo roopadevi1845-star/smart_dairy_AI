@@ -20,20 +20,17 @@ class CursorProxy:
 
     def fetchone(self):
         row = self.cursor.fetchone()
-        if row is None:
-            return None
+        if row is None: return None
         return dict(row) if self.dictionary else row
 
     def fetchall(self):
         rows = self.cursor.fetchall()
-        if not rows:
-            return []
+        if not rows: return []
         return [dict(r) for r in rows] if self.dictionary else rows
 
     def fetchmany(self, size=None):
         rows = self.cursor.fetchmany(size) if size is not None else self.cursor.fetchmany()
-        if not rows:
-            return []
+        if not rows: return []
         return [dict(r) for r in rows] if self.dictionary else rows
 
     @property

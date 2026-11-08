@@ -3,7 +3,6 @@ pandas
 numpy
 scikit-learn
 xgboost
-mysql-connector-python
 sqlalchemy
 twilio
 openpyxl
