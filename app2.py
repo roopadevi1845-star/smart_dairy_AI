@@ -1,3 +1,4 @@
+import os
 import hashlib
 import json
 import os
@@ -7,6 +8,17 @@ import pandas as pd
 from PIL import Image
 import streamlit as st
 from sqlalchemy import create_engine
+
+
+# Automatically detect if running on Streamlit Cloud vs your local laptop
+if os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE"):
+    # Streamlit Cloud: Use a safe, local SQLite file
+    DB_URL = "sqlite:///smart_dairy.db"
+    engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+else:
+    # Local Laptop: Use your original MySQL database
+    DB_URL = "mysql+mysqlconnector://root:YOUR_PASSWORD@localhost:3306/smart_dairy"
+    engine = create_engine(DB_URL)
 
 # ==============================================================================
 # IMPORT BACKEND MODULES WITH SAFE FALLBACK
