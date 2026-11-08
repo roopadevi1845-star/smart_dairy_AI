@@ -1,4 +1,5 @@
 import os
+import mysql.connector
 import streamlit as st
 from sqlalchemy import create_engine
 
