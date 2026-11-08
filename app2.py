@@ -1,12 +1,18 @@
 import os
 import streamlit as st
+import mysql.connector
 from sqlalchemy import create_engine
 
-# --- UNIVERSAL SQLITE DATABASE SETUP ---
-# Works instantly on your local laptop and on Streamlit Cloud with zero configuration
-DB_URL = "sqlite:///smart_dairy.db"
-engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
-
+# --- ENVIRONMENT-FIRST DATABASE SETUP ---
+# Uses SQLite on Streamlit Cloud, and your local MySQL (phpMyAdmin) on your laptop
+if os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE") or "mount" in os.getcwd():
+    # Streamlit Cloud: Use SQLite automatically
+    DB_URL = "sqlite:///smart_dairy.db"
+    engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+else:
+    # Local Computer: Use your local MySQL / phpMyAdmin database
+    DB_URL = "mysql+mysqlconnector://root:YOUR_PASSWORD@localhost:3306/smart_dairy"
+    engine = create_engine(DB_URL)
 # ==============================================================================
 # IMPORT BACKEND MODULES WITH SAFE FALLBACK
 # ==============================================================================
