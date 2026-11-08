@@ -4,31 +4,54 @@ import sqlite3
 DB_PATH = os.path.join(os.getcwd(), "smart_dairy.db")
 
 class CursorProxy:
-    def __init__(self, cursor):
+    def __init__(self, cursor, dictionary=False):
         self.cursor = cursor
+        self.dictionary = dictionary
+
     def execute(self, operation, params=None, multi=False):
         if params:
             operation = operation.replace("%s", "?")
             return self.cursor.execute(operation, params)
         return self.cursor.execute(operation)
+
     def executemany(self, operation, seq_params):
         operation = operation.replace("%s", "?")
         return self.cursor.executemany(operation, seq_params)
-    def fetchone(self): return self.cursor.fetchone()
-    def fetchall(self): return self.cursor.fetchall()
-    def fetchmany(self, size=None): return self.cursor.fetchmany(size)
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if row is None:
+            return None
+        return dict(row) if self.dictionary else row
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        if not rows:
+            return []
+        return [dict(r) for r in rows] if self.dictionary else rows
+
+    def fetchmany(self, size=None):
+        rows = self.cursor.fetchmany(size) if size is not None else self.cursor.fetchmany()
+        if not rows:
+            return []
+        return [dict(r) for r in rows] if self.dictionary else rows
+
     @property
     def lastrowid(self): return self.cursor.lastrowid
     @property
     def rowcount(self): return self.cursor.rowcount
     def close(self): return self.cursor.close()
-    def __iter__(self): return iter(self.cursor)
+    def __iter__(self):
+        for row in self.cursor:
+            yield dict(row) if self.dictionary else row
 
 class ConnectionProxy:
     def __init__(self, conn): self.conn = conn
+
     def cursor(self, *args, **kwargs):
-        # SQLite cursor() does not take arguments like dictionary=True; call plain cursor()
-        return CursorProxy(self.conn.cursor())
+        dictionary = kwargs.get('dictionary', False)
+        return CursorProxy(self.conn.cursor(), dictionary=dictionary)
+
     def commit(self): return self.conn.commit()
     def rollback(self): return self.conn.rollback()
     def close(self): return self.conn.close()
