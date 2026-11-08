@@ -2,19 +2,16 @@ import os
 import streamlit as st
 from sqlalchemy import create_engine
 
-# --- BULLETPROOF ENVIRONMENT-FIRST DATABASE SETUP ---
-if os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE"):
-    # Streamlit Cloud: Instantly use SQLite without trying MySQL
+# --- BULLETPROOF CLOUD DETECTION & SQLITE FALLBACK ---
+# Detects Streamlit Cloud reliably via working directory or mount path
+if "mount" in os.getcwd() or os.path.exists("/mount/src") or os.environ.get("STREAMLIT_SHARING_MODE"):
+    # Streamlit Cloud: Force SQLite
     DB_URL = "sqlite:///smart_dairy.db"
     engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
 else:
     # Local Computer: Use MySQL
-    try:
-        DB_URL = "mysql+mysqlconnector://root:YOUR_PASSWORD@localhost:3306/smart_dairy"
-        engine = create_engine(DB_URL)
-    except Exception:
-        DB_URL = "sqlite:///smart_dairy.db"
-        engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+    DB_URL = "mysql+mysqlconnector://root:YOUR_PASSWORD@localhost:3306/smart_dairy"
+    engine = create_engine(DB_URL)
 
 # ==============================================================================
 # IMPORT BACKEND MODULES WITH SAFE FALLBACK
